@@ -499,13 +499,11 @@ const Template = () => {
               
               <div className="flex items-center space-x-6">
                 
-                <a href="https://ips-community.netlify.app/" target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-lg shadow-md border border-blue-100 transition-all hover:shadow-lg hover:border-blue-200 hover:scale-105">
-                  <img 
+                <img 
                     src={ipsLogo} 
                     alt="IPS Tech Logo" 
-                    className="h-12 w-auto object-contain"
+                    className="h-27 w-auto object-contain"
                   />
-                </a>
               </div>
             </div>
           </div>
