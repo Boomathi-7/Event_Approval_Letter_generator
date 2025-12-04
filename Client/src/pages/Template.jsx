@@ -301,12 +301,38 @@ const Template = () => {
       pdf.text('To', tableX + colW * 2 + colW / 2, tableY + 5, { align: 'center' });
 
       try { pdf.setFont('times', 'normal'); } catch (e) {}
-      const fromText = pdf.splitTextToSize(approvalData.from || '', colW - 6);
-      const throughText = pdf.splitTextToSize(approvalData.through || '', colW - 6);
-      const toText = pdf.splitTextToSize(approvalData.to || '', colW - 6);
-      pdf.text(fromText, tableX + 3, tableY + 12);
-      pdf.text(throughText, tableX + colW + 3, tableY + 12);
-      pdf.text(toText, tableX + colW * 2 + 3, tableY + 12);
+      const lineHeight = 5;
+      const startY = tableY + 12;
+      const availableHeight = 28 - 12; // 16mm for content
+      
+      // Split by comma, semicolon or newline to get multiple entries
+      const splitEntries = (text) => {
+        if (!text) return [];
+        return text.split(/[,;\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+      };
+      
+      const fromEntries = splitEntries(approvalData.from || '');
+      const throughEntries = splitEntries(approvalData.through || '');
+      const toEntries = splitEntries(approvalData.to || '');
+      
+      // Render each entry on a new line
+      fromEntries.forEach((entry, i) => {
+        if (startY + i * lineHeight < tableY + 28 - 2) {
+          pdf.text(entry, tableX + 3, startY + i * lineHeight);
+        }
+      });
+      
+      throughEntries.forEach((entry, i) => {
+        if (startY + i * lineHeight < tableY + 28 - 2) {
+          pdf.text(entry, tableX + colW + 3, startY + i * lineHeight);
+        }
+      });
+      
+      toEntries.forEach((entry, i) => {
+        if (startY + i * lineHeight < tableY + 28 - 2) {
+          pdf.text(entry, tableX + colW * 2 + 3, startY + i * lineHeight);
+        }
+      });
 
       // Subject area and body
       const subjY = tableY + 33;
