@@ -546,28 +546,28 @@ const Template = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department <span className="text-gray-500 text-xs ml-2">({approvalData.department.length}/30)</span>
+                  <label className="block text-sm font-medium text-blue-700 mb-2">
+                    Department <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.department.length}/30)</span>
                   </label>
                   <input type="text" name="department" value={approvalData.department} onChange={handleApprovalChange} placeholder="Department" required maxLength={30} className="w-full px-3 py-2 border rounded-lg bg-white" />
                   {errors.department && <p className="text-red-600 text-sm mt-1">{errors.department}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    From <span className="text-gray-500 text-xs ml-2">({approvalData.from.length}/100)</span>
+                  <label className="block text-sm font-medium text-blue-700 mb-2">
+                    From <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.from.length}/100)</span>
                   </label>
                   <input type="text" name="from" value={approvalData.from} onChange={handleApprovalChange} placeholder="From" maxLength={100} className="w-full px-3 py-2 border rounded-lg bg-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Through <span className="text-gray-500 text-xs ml-2">({approvalData.through.length}/100)</span>
+                  <label className="block text-sm font-medium text-blue-700 mb-2">
+                    Through <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.through.length}/100)</span>
                   </label>
                   <input type="text" name="through" value={approvalData.through} onChange={handleApprovalChange} placeholder="Through" required maxLength={100} className="w-full px-3 py-2 border rounded-lg bg-white" />
                   {errors.through && <p className="text-red-600 text-sm mt-1">{errors.through}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    To <span className="text-gray-500 text-xs ml-2">({approvalData.to.length}/100)</span>
+                  <label className="block text-sm font-medium text-blue-700 mb-2">
+                    To <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.to.length}/100)</span>
                   </label>
                   <input type="text" name="to" value={approvalData.to} onChange={handleApprovalChange} placeholder="To" required maxLength={100} className="w-full px-3 py-2 border rounded-lg bg-white" />
                   {errors.to && <p className="text-red-600 text-sm mt-1">{errors.to}</p>}
@@ -575,16 +575,16 @@ const Template = () => {
               </div>
 
               <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject <span className="text-gray-500 text-xs ml-2">({approvalData.subject.length}/150)</span>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Subject <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.subject.length}/150)</span>
                 </label>
                 <input name="subject" value={approvalData.subject} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Subject for the approval letter" required maxLength={150} />
                 {errors.subject && <p className="text-red-600 text-sm mt-1">{errors.subject}</p>}
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Body of the letter <span className="text-gray-500 text-xs ml-2">({approvalData.body.length}/800)</span>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Body of the letter <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.body.length}/800)</span>
                 </label>
                 <textarea name="body" rows={6} value={approvalData.body} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Write the body of the approval letter here" required maxLength={800} />
                 {errors.body && <p className="text-red-600 text-sm mt-1">{errors.body}</p>}
@@ -609,7 +609,7 @@ const Template = () => {
                   <div className="space-y-4">
                     {/* Paste Table Content + Table Editor */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Paste Table Content</label>
+                      <label className="block text-sm font-medium text-blue-700 mb-2">Paste Table Content</label>
                       <textarea 
                         value={approvalData.tableContent || ''}
                         onChange={(e) => setApprovalData(prev => ({ ...prev, tableContent: e.target.value }))}
@@ -659,9 +659,9 @@ const Template = () => {
 
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-3">
-                  <h4 className="text-sm font-medium text-gray-700">Particulars</h4>
+                  <h4 className="text-sm font-medium text-blue-700">Particulars <span className="text-red-500">*</span></h4>
                   <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Number of particulars:</label>
+                    <label className="text-sm text-blue-700">Number of particulars:</label>
                     <select 
                       value={numberOfParticulars} 
                       onChange={handleNumberOfParticularsChange}
