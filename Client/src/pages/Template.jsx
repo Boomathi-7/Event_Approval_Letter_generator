@@ -32,7 +32,8 @@ const Template = () => {
       { particular: '', amount: '' },
       { particular: '', amount: '' },
       { particular: '', amount: '' }
-    ]
+    ],
+    attachTable: false
   });
   
   
@@ -744,23 +745,23 @@ const Template = () => {
 
       // Event Budget table near bottom
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Event Budget', pageWidth / 2, pageHeight - 70, { align: 'center' });
+      pdf.text('Event Budget', pageWidth / 2, pageHeight - 82, { align: 'center' });
 
       const budgetW = 120;
       const budgetX = (pageWidth - budgetW) / 2;
-      const budgetY = pageHeight - 64;
+      const budgetY = pageHeight - 76; // Increased from 64 to 76 for more space
       const rowH = 8;
       const col1 = 18; // S.No
       const col2 = 72; // Particulars
       const col3 = budgetW - col1 - col2; // Amount
 
-      // header row
+      // header row + 3 particulars + total (5 rows total)
       pdf.setLineWidth(0.3);
-      pdf.rect(budgetX, budgetY, budgetW, rowH);
-      pdf.rect(budgetX, budgetY + rowH, budgetW, rowH);
-      pdf.rect(budgetX, budgetY + rowH * 2, budgetW, rowH);
-      pdf.rect(budgetX, budgetY + rowH * 3, budgetW, rowH);
-      pdf.rect(budgetX + budgetW - 40, budgetY + rowH * 3, 40, rowH); // total amount cell
+      pdf.rect(budgetX, budgetY, budgetW, rowH); // Header
+      pdf.rect(budgetX, budgetY + rowH, budgetW, rowH); // Particular 1
+      pdf.rect(budgetX, budgetY + rowH * 2, budgetW, rowH); // Particular 2
+      pdf.rect(budgetX, budgetY + rowH * 3, budgetW, rowH); // Particular 3
+      pdf.rect(budgetX, budgetY + rowH * 4, budgetW, rowH); // Total row
 
       // column separators
       pdf.line(budgetX + col1, budgetY, budgetX + col1, budgetY + rowH * 4);
@@ -779,16 +780,16 @@ const Template = () => {
         const p = approvalData.particulars[i] ? approvalData.particulars[i].particular : '';
         const a = approvalData.particulars[i] ? approvalData.particulars[i].amount : '';
         pdf.text(`${i + 1}.`, budgetX + 4, budgetY + rowH * (i + 1) + 6);
-        pdf.text(p || '', budgetX + col1 + 6, budgetY + rowH * (i + 1) + 6);
-        pdf.text(a ? `₹ ${a}` : '₹', budgetX + col1 + col2 + 6, budgetY + rowH * (i + 1) + 6);
+        pdf.text(p || 'nil', budgetX + col1 + 6, budgetY + rowH * (i + 1) + 6);
+        pdf.text(a ? a : '0', budgetX + col1 + col2 + 6, budgetY + rowH * (i + 1) + 6);
         const num = parseFloat(String(a).replace(/,/g, '')) || 0;
         total += num;
       }
 
       // Total row
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * 4 - 2);
-      pdf.text(`₹ ${total.toFixed(2)}`, budgetX + budgetW - 6, budgetY + rowH * 4 - 2, { align: 'right' });
+      pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * 4 + 6);
+      pdf.text(total.toFixed(2), budgetX + col1 + col2 + 6, budgetY + rowH * 4 + 6);
 
       // Save
       pdf.save(`Event_Approval_Letter_${(approvalData.department || 'dept')}.pdf`);
@@ -824,7 +825,8 @@ const Template = () => {
         { particular: '', amount: '' },
         { particular: '', amount: '' },
         { particular: '', amount: '' }
-      ]
+      ],
+      attachTable: false
     });
     setErrors({});
   };
@@ -937,6 +939,18 @@ const Template = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="flex items-center space-x-3">
+                  <input 
+                    type="checkbox" 
+                    checked={approvalData.attachTable} 
+                    onChange={(e) => setApprovalData(prev => ({ ...prev, attachTable: e.target.checked }))}
+                    className="w-4 h-4 border border-gray-300 rounded bg-white cursor-pointer"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Attach additional table if required</span>
+                </label>
               </div>
 
               <div className="mt-4 flex justify-end">
