@@ -530,54 +530,48 @@ const Template = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                  <input type="text" name="department" value={approvalData.department} onChange={handleApprovalChange} placeholder="Department" required className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Department <span className="text-gray-500 text-xs ml-2">({approvalData.department.length}/30)</span>
+                  </label>
+                  <input type="text" name="department" value={approvalData.department} onChange={handleApprovalChange} placeholder="Department" required maxLength={30} className="w-full px-3 py-2 border rounded-lg bg-white" />
                   {errors.department && <p className="text-red-600 text-sm mt-1">{errors.department}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
-                  <input type="text" name="from" value={approvalData.from} onChange={handleApprovalChange} placeholder="From" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    From <span className="text-gray-500 text-xs ml-2">({approvalData.from.length}/100)</span>
+                  </label>
+                  <input type="text" name="from" value={approvalData.from} onChange={handleApprovalChange} placeholder="From" maxLength={100} className="w-full px-3 py-2 border rounded-lg bg-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Through</label>
-                  <input type="text" name="through" value={approvalData.through} onChange={handleApprovalChange} placeholder="Through" required className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Through <span className="text-gray-500 text-xs ml-2">({approvalData.through.length}/100)</span>
+                  </label>
+                  <input type="text" name="through" value={approvalData.through} onChange={handleApprovalChange} placeholder="Through" required maxLength={100} className="w-full px-3 py-2 border rounded-lg bg-white" />
                   {errors.through && <p className="text-red-600 text-sm mt-1">{errors.through}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
-                  <input type="text" name="to" value={approvalData.to} onChange={handleApprovalChange} placeholder="To" required className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    To <span className="text-gray-500 text-xs ml-2">({approvalData.to.length}/100)</span>
+                  </label>
+                  <input type="text" name="to" value={approvalData.to} onChange={handleApprovalChange} placeholder="To" required maxLength={100} className="w-full px-3 py-2 border rounded-lg bg-white" />
                   {errors.to && <p className="text-red-600 text-sm mt-1">{errors.to}</p>}
                 </div>
               </div>
 
               <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                <input name="subject" value={approvalData.subject} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Subject for the approval letter" required />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject <span className="text-gray-500 text-xs ml-2">({approvalData.subject.length}/150)</span>
+                </label>
+                <input name="subject" value={approvalData.subject} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Subject for the approval letter" required maxLength={150} />
                 {errors.subject && <p className="text-red-600 text-sm mt-1">{errors.subject}</p>}
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Body of the letter</label>
-                <textarea name="body" rows={6} value={approvalData.body} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Write the body of the approval letter here" required />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Body of the letter <span className="text-gray-500 text-xs ml-2">({approvalData.body.length}/800)</span>
+                </label>
+                <textarea name="body" rows={6} value={approvalData.body} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Write the body of the approval letter here" required maxLength={800} />
                 {errors.body && <p className="text-red-600 text-sm mt-1">{errors.body}</p>}
-              </div>
-
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2 text-center">Particulars</h4>
-                {errors.particulars && <p className="text-red-600 text-sm mt-1 text-center">{errors.particulars}</p>}
-                <div className="space-y-3">
-                  {approvalData.particulars.map((b, idx) => (
-                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_96px] gap-2 items-center">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-sm font-medium text-gray-600">{idx + 1}.</span>
-                        <input value={b.particular} onChange={(e) => handleParticularChange(idx, 'particular', e.target.value)} placeholder={`Particular ${idx + 1}`} className="flex-1 px-3 py-2 border rounded-lg bg-white" />
-                      </div>
-                      <div>
-                        <input type="number" min="0" step="0.01" value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="mb-4">
@@ -647,23 +641,37 @@ const Template = () => {
                 </div>
               )}
 
-              <div className="mt-4 flex justify-end">
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2 text-center">Particulars</h4>
+                {errors.particulars && <p className="text-red-600 text-sm mt-1 text-center">{errors.particulars}</p>}
+                <div className="space-y-3">
+                  {approvalData.particulars.map((b, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_96px] gap-2 items-center">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-medium text-gray-600">{idx + 1}.</span>
+                        <input value={b.particular} onChange={(e) => handleParticularChange(idx, 'particular', e.target.value)} placeholder={`Particular ${idx + 1}`} maxLength={50} className="flex-1 px-3 py-2 border rounded-lg bg-white" />
+                      </div>
+                      <div>
+                        <input type="number" min="0" step="0.01" value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={isSubmitting || isGeneratingPdf}
+                  className="px-5 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  Reset Form
+                </button>
                 <button type="button" onClick={generateApprovalLetterPdf} disabled={isGeneratingPdf} className="px-5 py-3 bg-gradient-to-r from-blue-500 to-sky-600 hover:from-blue-600 hover:to-sky-700 border border-transparent rounded-lg shadow-md text-sm font-medium text-white transition-all duration-200">
                   {isGeneratingPdf ? 'Generating Approval PDF...' : 'Generate Approval Letter PDF'}
                 </button>
               </div>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex items-center justify-end space-x-6 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={resetForm}
-                disabled={isSubmitting || isGeneratingPdf}
-                className="px-5 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                <div className="flex items-center">Reset Form</div>
-              </button>
             </div>
           </form>
         </div>
