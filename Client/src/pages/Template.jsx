@@ -20,6 +20,21 @@ const Template = () => {
     result: ''
   });
   
+  // State for approval-letter specific fields
+  const [approvalData, setApprovalData] = useState({
+    from: '',
+    through: '',
+    to: '',
+    department: '',
+    subject: '',
+    body: '',
+    particulars: [
+      { particular: '', amount: '' },
+      { particular: '', amount: '' },
+      { particular: '', amount: '' }
+    ]
+  });
+  
   
   // State for image uploads - now arrays to handle multiple images
   const [programImages, setProgramImages] = useState([]);
@@ -32,7 +47,6 @@ const Template = () => {
   const [isSplitupImageLoaded, setIsSplitupImageLoaded] = useState(true); // Track if splitup image is loaded
   
   // References to form elements
-  const formRef = useRef(null);
 
   // Handle text input changes
   const handleInputChange = (e) => {
@@ -40,6 +54,20 @@ const Template = () => {
     setFormData({
       ...formData,
       [name]: value
+    });
+  };
+
+  // Handle approval-letter input changes
+  const handleApprovalChange = (e) => {
+    const { name, value } = e.target;
+    setApprovalData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleParticularChange = (index, field, value) => {
+    setApprovalData(prev => {
+      const newPart = [...prev.particulars];
+      newPart[index] = { ...newPart[index], [field]: value };
+      return { ...prev, particulars: newPart };
     });
   };
 
@@ -126,17 +154,7 @@ const Template = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      setIsSubmitting(true);
-      // Here you would typically send data to your backend
-      // For this example, we'll just generate the PDF
-      generatePDF();
-    }
-  };
+  // Handle form submission (experiment generator) -- removed from UI
 
   // Generate PDF from form data with border and header box
   const generatePDF = async () => {
@@ -628,25 +646,187 @@ const Template = () => {
     }
   };
 
-  // Reset form
+  // Generate Event Approval Letter PDF
+  const generateApprovalLetterPdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 6; // mm
+
+      // Draw outer border
+      pdf.setLineWidth(0.6);
+      pdf.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+      // Header area (logo left + institute text centered + doc ref box right)
+      const headerY = margin + 6;
+      try {
+        if (logo) {
+          // try adding logo (may be webp/png depending on bundler)
+          pdf.addImage(logo, 'PNG', margin + 4, headerY - 2, 28, 18);
+        }
+      } catch (e) {
+        // ignore image errors
+      }
+
+      // Institute name block centered
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KGISL INSTITUTE OF TECHNOLOGY,', pageWidth / 2, headerY + 2, { align: 'center' });
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('COIMBATORE -35, TN, INDIA', pageWidth / 2, headerY + 8, { align: 'center' });
+
+      // Small table at top-right for Doc.Ref and Issue No/Date
+      const rightBoxW = 52;
+      const rightBoxX = pageWidth - margin - rightBoxW;
+      const rightBoxY = margin + 4;
+      pdf.setFontSize(8);
+      pdf.rect(rightBoxX, rightBoxY, rightBoxW, 18);
+      pdf.text('Doc. Ref.', rightBoxX + 4, rightBoxY + 5);
+      pdf.text('KITE/AC/AL/ 75', rightBoxX + 4, rightBoxY + 11);
+      pdf.text('Issue No / Date', rightBoxX + 4, rightBoxY + 15);
+      // Use current date for issue date
+      const now = new Date();
+      const issueDate = now.toLocaleDateString('en-GB');
+      pdf.text(issueDate, rightBoxX + rightBoxW - 6, rightBoxY + 15, { align: 'right' });
+
+      // Title
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('EVENT APPROVAL LETTER', pageWidth / 2, headerY + 28, { align: 'center' });
+
+      // Date on right (use current date)
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Date: ${issueDate}`, pageWidth - margin - 30, headerY + 36);
+
+      // From / Through / To table
+      const tableY = headerY + 44;
+      const tableX = margin + 10;
+      const tableW = pageWidth - margin * 2 - 20;
+      const colW = tableW / 3;
+
+      pdf.setLineWidth(0.4);
+      pdf.rect(tableX, tableY, tableW, 28);
+      // vertical separators
+      pdf.line(tableX + colW, tableY, tableX + colW, tableY + 28);
+      pdf.line(tableX + colW * 2, tableY, tableX + colW * 2, tableY + 28);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('From', tableX + colW / 2, tableY + 8, { align: 'center' });
+      pdf.text('Through', tableX + colW + colW / 2, tableY + 8, { align: 'center' });
+      pdf.text('To', tableX + colW * 2 + colW / 2, tableY + 8, { align: 'center' });
+
+      pdf.setFont('helvetica', 'normal');
+      const fromText = pdf.splitTextToSize(approvalData.from || '', colW - 6);
+      const throughText = pdf.splitTextToSize(approvalData.through || '', colW - 6);
+      const toText = pdf.splitTextToSize(approvalData.to || '', colW - 6);
+      pdf.text(fromText, tableX + 3, tableY + 14);
+      pdf.text(throughText, tableX + colW + 3, tableY + 14);
+      pdf.text(toText, tableX + colW * 2 + 3, tableY + 14);
+
+      // Subject area and body
+      const subjY = tableY + 38;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Sub :', tableX, subjY + 4);
+      // small subject line above the box
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(approvalData.subject || '', tableX + 18, subjY + 4);
+      pdf.setFont('helvetica', 'normal');
+      const subjBoxY = subjY + 8;
+      const subjBoxH = 80;
+      pdf.rect(tableX, subjBoxY, tableW, subjBoxH);
+      const bodyText = pdf.splitTextToSize(approvalData.body || '', tableW - 6);
+      pdf.text(bodyText, tableX + 3, subjBoxY + 8);
+
+      // Event Budget table near bottom
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Event Budget', pageWidth / 2, pageHeight - 70, { align: 'center' });
+
+      const budgetW = 120;
+      const budgetX = (pageWidth - budgetW) / 2;
+      const budgetY = pageHeight - 64;
+      const rowH = 8;
+      const col1 = 18; // S.No
+      const col2 = 72; // Particulars
+      const col3 = budgetW - col1 - col2; // Amount
+
+      // header row
+      pdf.setLineWidth(0.3);
+      pdf.rect(budgetX, budgetY, budgetW, rowH);
+      pdf.rect(budgetX, budgetY + rowH, budgetW, rowH);
+      pdf.rect(budgetX, budgetY + rowH * 2, budgetW, rowH);
+      pdf.rect(budgetX, budgetY + rowH * 3, budgetW, rowH);
+      pdf.rect(budgetX + budgetW - 40, budgetY + rowH * 3, 40, rowH); // total amount cell
+
+      // column separators
+      pdf.line(budgetX + col1, budgetY, budgetX + col1, budgetY + rowH * 4);
+      pdf.line(budgetX + col1 + col2, budgetY, budgetX + col1 + col2, budgetY + rowH * 4);
+
+      // header texts
+      pdf.setFontSize(9);
+      pdf.text('S.No', budgetX + col1 / 2, budgetY + 6, { align: 'center' });
+      pdf.text('Particulars', budgetX + col1 + 6, budgetY + 6);
+      pdf.text('Amount', budgetX + col1 + col2 + 20, budgetY + 6);
+
+      // fill rows from approvalData.particulars
+      pdf.setFont('helvetica', 'normal');
+      let total = 0;
+      for (let i = 0; i < approvalData.particulars.length; i++) {
+        const p = approvalData.particulars[i] ? approvalData.particulars[i].particular : '';
+        const a = approvalData.particulars[i] ? approvalData.particulars[i].amount : '';
+        pdf.text(`${i + 1}.`, budgetX + 4, budgetY + rowH * (i + 1) + 6);
+        pdf.text(p || '', budgetX + col1 + 6, budgetY + rowH * (i + 1) + 6);
+        pdf.text(a ? `₹ ${a}` : '₹', budgetX + col1 + col2 + 6, budgetY + rowH * (i + 1) + 6);
+        const num = parseFloat(String(a).replace(/,/g, '')) || 0;
+        total += num;
+      }
+
+      // Total row
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * 4 - 2);
+      pdf.text(`₹ ${total.toFixed(2)}`, budgetX + budgetW - 6, budgetY + rowH * 4 - 2, { align: 'right' });
+
+      // Save
+      pdf.save(`Event_Approval_Letter_${(approvalData.department || 'dept')}.pdf`);
+    } catch (err) {
+      console.error('Approval PDF error', err);
+      alert('Error generating approval letter PDF');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // Reset form (approval fields)
   const resetForm = () => {
     setFormData({
       rollNo: '',
       expNo: '',
       expTitle: '',
-      academicYear: '1', // Default to 1st year
+      academicYear: '1',
       aim: '',
       procedure: '',
       result: ''
     });
     setProgramImages([]);
     setOutputImages([]);
+    setApprovalData({
+      from: '',
+      through: '',
+      to: '',
+      department: '',
+      subject: '',
+      body: '',
+      particulars: [
+        { particular: '', amount: '' },
+        { particular: '', amount: '' },
+        { particular: '', amount: '' }
+      ]
+    });
     setErrors({});
-    
-    // Reset the form element itself if the ref is available
-    if (formRef.current) {
-      formRef.current.reset();
-    }
   };
 
   return (
@@ -698,392 +878,74 @@ const Template = () => {
 
         <div className="shadow-xl rounded-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-sky-900 to-blue-700 px-8 py-6">
-            <h1 className="text-white text-3xl font-bold tracking-tight">Create New Record</h1>
-            <p className="text-blue-50 text-sm mt-1">Complete the form below to generate your experiment record</p>
+            <h1 className="text-white text-3xl font-bold tracking-tight">Event Approval Letter Generator</h1>
+            <p className="text-blue-50 text-sm mt-1">Fill the fields below and generate the approval letter PDF</p>
           </div>
-          
-          <form ref={formRef} onSubmit={handleSubmit} className="px-8 py-8 space-y-8 bg-gradient-to-br from-blue-50 to-sky-50">
-            {/* Basic Info Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Roll Number */}
-              <div className="relative">
-                <label className="block text-sm font-medium text-blue-700 mb-2">
-                  Roll Number
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    name="rollNo"
-                    value={formData.rollNo}
-                    onChange={handleInputChange}
-                    onCopy={preventCopyPaste}
-                    onPaste={preventCopyPaste}
-                    className={`block w-full pl-10 pr-4 py-3 border ${errors.rollNo ? 'border-red-400' : 'border-blue-100'} rounded-lg shadow-sm bg-white bg-opacity-70 focus:ring-2 focus:ring-blue-400 focus:border-blue-300 focus:bg-white focus:bg-opacity-100 transition duration-150`}
-                    placeholder="Enter your roll number"
-                    required
-                  />
+
+          <form className="px-8 py-8 space-y-8 bg-gradient-to-br from-blue-50 to-sky-50">
+            
+            {/* Approval Letter Details */}
+            <div className="bg-slate-50 rounded-xl p-6 border border-gray-200 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+                </svg>
+                Event Approval Letter
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                  <input type="text" name="department" value={approvalData.department} onChange={handleApprovalChange} placeholder="Department" className="w-full px-3 py-2 border rounded-lg bg-white" />
                 </div>
-                {errors.rollNo && (
-                  <p className="mt-2 text-sm text-red-600">{errors.rollNo}</p>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
+                  <input type="text" name="from" value={approvalData.from} onChange={handleApprovalChange} placeholder="From" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Through</label>
+                  <input type="text" name="through" value={approvalData.through} onChange={handleApprovalChange} placeholder="Through" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
+                  <input type="text" name="to" value={approvalData.to} onChange={handleApprovalChange} placeholder="To" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                </div>
               </div>
-              
-              {/* Experiment Number */}
-              <div className="relative">
-                <label className="block text-sm font-medium text-blue-700 mb-2">
-                  Experiment Number
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    name="expNo"
-                    value={formData.expNo}
-                    onChange={handleInputChange}
-                    onCopy={preventCopyPaste}
-                    onPaste={preventCopyPaste}
-                    className={`block w-full pl-10 pr-4 py-3 border ${errors.expNo ? 'border-red-400' : 'border-gray-300'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150`}
-                    placeholder="Enter experiment number"
-                    required
-                  />
+
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <input name="subject" value={approvalData.subject} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Subject for the approval letter" />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Body of the letter</label>
+                <textarea name="body" rows={6} value={approvalData.body} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Write the body of the approval letter here" />
+              </div>
+
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Particulars</h4>
+                <div className="space-y-3">
+                  {approvalData.particulars.map((b, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_96px] gap-2 items-center">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-medium text-gray-600">{idx + 1}.</span>
+                        <input value={b.particular} onChange={(e) => handleParticularChange(idx, 'particular', e.target.value)} placeholder={`Particular ${idx + 1}`} className="flex-1 px-3 py-2 border rounded-lg bg-white" />
+                      </div>
+                      <div>
+                        <input value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {errors.expNo && (
-                  <p className="mt-2 text-sm text-red-600">{errors.expNo}</p>
-                )}
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button type="button" onClick={generateApprovalLetterPdf} disabled={isGeneratingPdf} className="px-5 py-3 bg-gradient-to-r from-blue-500 to-sky-600 hover:from-blue-600 hover:to-sky-700 border border-transparent rounded-lg shadow-md text-sm font-medium text-white transition-all duration-200">
+                  {isGeneratingPdf ? 'Generating Approval PDF...' : 'Generate Approval Letter PDF'}
+                </button>
               </div>
             </div>
 
-            {/* Academic Year */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-blue-700 mb-2">
-                Academic Year
-                <span className="ml-2 text-xs text-blue-500">(For mark split-up display in the generated PDF)</span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <select
-                  name="academicYear"
-                  value={formData.academicYear}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-4 py-3 border ${errors.academicYear ? 'border-red-400' : 'border-gray-300'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150`}
-                  required
-                >
-                  <option value="1">1st Year</option>
-                  <option value="2">2nd Year</option>
-                  <option value="3">3rd Year</option>
-                  <option value="4">4th Year</option>
-                </select>
-              </div>
-              {errors.academicYear && (
-                <p className="mt-2 text-sm text-red-600">{errors.academicYear}</p>
-              )}
-            </div>
-            
-            {/* Experiment Title */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-blue-700 mb-2">
-                Experiment Title
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  name="expTitle"
-                  value={formData.expTitle}
-                  onChange={handleInputChange}
-                  onCopy={preventCopyPaste}
-                  onPaste={preventCopyPaste}
-                  className={`block w-full pl-10 pr-4 py-3 border ${errors.expTitle ? 'border-red-400' : 'border-gray-300'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150`}
-                  placeholder="Enter a descriptive title for your experiment"
-                  required
-                />
-              </div>
-              {errors.expTitle && (
-                <p className="mt-2 text-sm text-red-600">{errors.expTitle}</p>
-              )}
-            </div>
-            
-            {/* Content Sections with Card-like Design */}
-            <div className="bg-slate-50 rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Experiment Details
-              </h3>
-              
-              {/* Aim */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Aim
-                </label>
-                <div className="relative">
-                  <div className="absolute top-3 left-3 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                    </svg>
-                  </div>
-                  <textarea
-                    name="aim"
-                    value={formData.aim}
-                    onChange={handleInputChange}
-                    onCopy={preventCopyPaste}
-                    onPaste={preventCopyPaste}
-                    rows="3"
-                    className={`w-full pl-10 pr-4 py-3 border ${errors.aim ? 'border-red-400' : 'border-gray-300'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150`}
-                    placeholder="Enter the aim of your experiment"
-                    required
-                  ></textarea>
-                </div>
-                {errors.aim && (
-                  <p className="mt-2 text-sm text-red-600">{errors.aim}</p>
-                )}
-              </div>
-              
-              {/* Procedure */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Procedure
-                </label>
-                <div className="relative">
-                  <div className="absolute top-3 left-3 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  </div>
-                  <textarea
-                    name="procedure"
-                    value={formData.procedure}
-                    onChange={handleInputChange}
-                    onCopy={preventCopyPaste}
-                    onPaste={preventCopyPaste}
-                    rows="5"
-                    className={`w-full pl-10 pr-4 py-3 border ${errors.procedure ? 'border-red-400' : 'border-gray-300'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150`}
-                    placeholder="Describe the step-by-step procedure followed in your experiment"
-                    required
-                  ></textarea>
-                </div>
-                {errors.procedure && (
-                  <p className="mt-2 text-sm text-red-600">{errors.procedure}</p>
-                )}
-              </div>
-            </div>
-            
-            {/* Program Upload Section */}
-            <div className="bg-slate-50 rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-                Program Screenshots
-              </h3>
-              
-              <div className="flex items-center justify-center p-6 border-2 border-blue-200 border-dashed rounded-xl bg-blue-50 transition-all duration-300 hover:bg-blue-100">
-                <div className="space-y-2 text-center">
-                  <svg
-                    className="mx-auto h-14 w-14 text-blue-500"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <div className="flex flex-col sm:flex-row items-center justify-center text-sm text-gray-600">
-                    <label
-                      htmlFor="program-upload"
-                      className="relative cursor-pointer bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium text-white focus-within:outline-none transition duration-200 mx-2 mb-2 sm:mb-0"
-                    >
-                      <span>Select Files</span>
-                      <input
-                        id="program-upload"
-                        name="program-upload"
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="sr-only"
-                        onChange={(e) => handleImageUpload(e, 'program')}
-                      />
-                    </label>
-                    <p className="text-gray-600">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    PNG, JPG, GIF up to 5MB each
-                  </p>
-                </div>
-              </div>
-              
-              {/* Display uploaded program images with preview */}
-              {programImages.length > 0 && (
-                <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {programImages.map((img, index) => (
-                    <div key={index} className="relative group rounded-xl overflow-hidden shadow-md transform transition duration-200 hover:scale-105 hover:shadow-lg">
-                      <img 
-                        src={img} 
-                        alt={`Program image ${index + 1}`} 
-                        className="h-40 w-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-70"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-3 flex justify-between items-center">
-                        <span className="text-white text-sm font-medium">Image {index + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index, 'program')}
-                          className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition duration-200 transform hover:scale-110"
-                          title="Remove image"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {errors.programImages && (
-                <p className="mt-3 text-sm text-red-600 font-medium">{errors.programImages}</p>
-              )}
-            </div>
-            
-            {/* Output Upload Section */}
-            <div className="bg-slate-50 rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Output Screenshots
-              </h3>
-              
-              <div className="flex items-center justify-center p-6 border-2 border-green-200 border-dashed rounded-xl bg-green-50 transition-all duration-300 hover:bg-green-100">
-                <div className="space-y-2 text-center">
-                  <svg
-                    className="mx-auto h-14 w-14 text-green-500"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <div className="flex flex-col sm:flex-row items-center justify-center text-sm text-gray-600">
-                    <label
-                      htmlFor="output-upload"
-                      className="relative cursor-pointer bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium text-white focus-within:outline-none transition duration-200 mx-2 mb-2 sm:mb-0"
-                    >
-                      <span>Select Files</span>
-                      <input
-                        id="output-upload"
-                        name="output-upload"
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="sr-only"
-                        onChange={(e) => handleImageUpload(e, 'output')}
-                      />
-                    </label>
-                    <p className="text-gray-600">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    PNG, JPG, GIF up to 5MB each
-                  </p>
-                </div>
-              </div>
-              
-              {/* Display uploaded output images with preview */}
-              {outputImages.length > 0 && (
-                <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {outputImages.map((img, index) => (
-                    <div key={index} className="relative group rounded-xl overflow-hidden shadow-md transform transition duration-200 hover:scale-105 hover:shadow-lg">
-                      <img 
-                        src={img} 
-                        alt={`Output image ${index + 1}`} 
-                        className="h-40 w-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-70"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-3 flex justify-between items-center">
-                        <span className="text-white text-sm font-medium">Image {index + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index, 'output')}
-                          className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition duration-200 transform hover:scale-110"
-                          title="Remove image"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {errors.outputImages && (
-                <p className="mt-3 text-sm text-red-600 font-medium">{errors.outputImages}</p>
-              )}
-            </div>
-            
-            {/* Result Section */}
-            <div className="bg-slate-50 rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Result & Conclusion
-              </h3>
-              
-              <div className="relative">
-                <div className="absolute top-3 left-3 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
-                <textarea
-                  name="result"
-                  value={formData.result}
-                  onChange={handleInputChange}
-                  onCopy={preventCopyPaste}
-                  onPaste={preventCopyPaste}
-                  rows="4"
-                  className={`w-full pl-10 pr-4 py-3 border ${errors.result ? 'border-red-400' : 'border-gray-300'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150`}
-                  placeholder="Describe the outcomes and conclusions of your experiment"
-                  required
-                ></textarea>
-              </div>
-              {errors.result && (
-                <p className="mt-2 text-sm text-red-600">{errors.result}</p>
-              )}
-            </div>
-            
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-6 pt-6 border-t border-gray-200">
               <button
@@ -1092,34 +954,7 @@ const Template = () => {
                 disabled={isSubmitting || isGeneratingPdf}
                 className="px-5 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                <div className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Reset Form
-                </div>
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || isGeneratingPdf}
-                className="px-5 py-3 bg-gradient-to-r from-blue-500 to-sky-600 hover:from-blue-600 hover:to-sky-700 border border-transparent rounded-lg shadow-md text-sm font-medium text-white transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:transform-none"
-              >
-                {isGeneratingPdf ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generating PDF...
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Generate Record PDF
-                  </div>
-                )}
+                <div className="flex items-center">Reset Form</div>
               </button>
             </div>
           </form>
