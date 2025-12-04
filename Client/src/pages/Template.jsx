@@ -62,9 +62,12 @@ const Template = () => {
       pdf.setLineWidth(0.6);
       pdf.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
-      // Current date
+      // Fixed issue date for header
+      const issueDate = '02 / 30.08.2024';
+      
+      // Current date for the Date field (when PDF is generated)
       const now = new Date();
-      const issueDate = now.toLocaleDateString('en-GB');
+      const currentDate = now.toLocaleDateString('en-GB');
 
       // Header table structure (matching Pasted Image 1)
       const headerStartY = margin + 4;
@@ -114,17 +117,11 @@ const Template = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.text('ACADEMIC - FORMS', middleX + middleColWidth / 2, headerStartY + row1H + row2H + row3H / 2 + 1.5, { align: 'center' });
       
-      // Row 4: Event Approval Letter
+      // Row 4: Academic Year (swapped with Event Approval Letter)
       pdf.rect(middleX, headerStartY + row1H + row2H + row3H, middleColWidth, row4H);
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('EVENT APPROVAL LETTER', middleX + middleColWidth / 2, headerStartY + row1H + row2H + row3H + row4H / 2 + 1.5, { align: 'center' });
-      
-      // Row 5: Academic Year (below the middle column)
-      pdf.rect(middleX, headerStartY + headerHeight, middleColWidth, 8);
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('ACADEMIC YEAR: 2024 - 2025', middleX + middleColWidth / 2, headerStartY + headerHeight + 5.5, { align: 'center' });
+      pdf.text('ACADEMIC YEAR: 2024 - 2025', middleX + middleColWidth / 2, headerStartY + row1H + row2H + row3H + row4H / 2 + 1.5, { align: 'center' });
       
       // Right column - divided into 3 rows
       const rightX = middleX + middleColWidth;
@@ -151,27 +148,23 @@ const Template = () => {
       // Row 3: Department
       pdf.rect(rightX, headerStartY + rightRow1H + rightRow2H, rightColWidth, rightRow3H);
       pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Department', rightX + rightColWidth / 2, headerStartY + rightRow1H + rightRow2H + rightRow3H / 2 + 1.5, { align: 'center' });
-      
-      // Extend Department cell below
-      pdf.rect(rightX, headerStartY + headerHeight, rightColWidth, 8);
-      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      const deptText = approvalData.department || '';
-      pdf.text(deptText, rightX + rightColWidth / 2, headerStartY + headerHeight + 5.5, { align: 'center' });
+      pdf.text('Department', rightX + rightColWidth / 2, headerStartY + rightRow1H + rightRow2H + rightRow3H / 3 + 1, { align: 'center' });
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(approvalData.department || '', rightX + rightColWidth / 2, headerStartY + rightRow1H + rightRow2H + rightRow3H / 3 + 7, { align: 'center' });
 
       // Title below header table
-      const titleY = headerStartY + headerHeight + 14;
+      const titleY = headerStartY + headerHeight + 10;
       pdf.setFontSize(13);
       pdf.setFont('helvetica', 'bold');
       pdf.text('EVENT APPROVAL LETTER', pageWidth / 2, titleY, { align: 'center' });
 
-      // Date on right
-      const dateY = titleY + 8;
+      // Date on right (uses current date when PDF is generated) - aligned with title
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Date: ${issueDate}`, pageWidth - margin - 10, dateY, { align: 'right' });
+      pdf.text(`Date: ${currentDate}`, pageWidth - margin - 10, titleY, { align: 'right' });
+      
+      const dateY = titleY;
 
       // From / Through / To table
       const tableY = dateY + 8;
