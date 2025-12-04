@@ -62,51 +62,119 @@ const Template = () => {
       pdf.setLineWidth(0.6);
       pdf.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
-      // Header area (logo left + institute text centered + doc ref box right)
-      const headerY = margin + 6;
+      // Current date
+      const now = new Date();
+      const issueDate = now.toLocaleDateString('en-GB');
+
+      // Header table structure (matching Pasted Image 1)
+      const headerStartY = margin + 4;
+      const headerHeight = 38;
+      
+      // Define column widths
+      const logoColWidth = 40;
+      const middleColWidth = pageWidth - margin * 2 - logoColWidth - 60;
+      const rightColWidth = 60;
+      
+      // Draw main header table structure
+      // Top row with 3 columns (logo, middle content, right info box)
+      pdf.setLineWidth(0.4);
+      
+      // Logo column
+      pdf.rect(margin, headerStartY, logoColWidth, headerHeight);
       try {
         if (logo) {
-          // try adding logo (may be webp/png depending on bundler)
-          pdf.addImage(logo, 'PNG', margin + 4, headerY - 2, 28, 18);
+          pdf.addImage(logo, 'PNG', margin + 6, headerStartY + 8, 28, 22);
         }
       } catch (e) {
         // ignore image errors
       }
-
-      // Institute name block centered
-      pdf.setFontSize(10);
+      
+      // Middle column - divided into 4 rows
+      const middleX = margin + logoColWidth;
+      const row1H = headerHeight / 4;
+      const row2H = headerHeight / 4;
+      const row3H = headerHeight / 4;
+      const row4H = headerHeight / 4;
+      
+      // Row 1: Institute name
+      pdf.rect(middleX, headerStartY, middleColWidth, row1H);
+      pdf.setFontSize(11);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('KGISL INSTITUTE OF TECHNOLOGY,', pageWidth / 2, headerY + 2, { align: 'center' });
+      pdf.text('KGISL INSTITUTE OF TECHNOLOGY,', middleX + middleColWidth / 2, headerStartY + row1H / 2 + 1.5, { align: 'center' });
+      
+      // Row 2: Location
+      pdf.rect(middleX, headerStartY + row1H, middleColWidth, row2H);
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('COIMBATORE -35, TN, INDIA', pageWidth / 2, headerY + 8, { align: 'center' });
-
-      // Small table at top-right for Doc.Ref and Issue No/Date
-      const rightBoxW = 52;
-      const rightBoxX = pageWidth - margin - rightBoxW;
-      const rightBoxY = margin + 4;
-      pdf.setFontSize(8);
-      pdf.rect(rightBoxX, rightBoxY, rightBoxW, 18);
-      pdf.text('Doc. Ref.', rightBoxX + 4, rightBoxY + 5);
-      pdf.text('KITE/AC/AL/ 75', rightBoxX + 4, rightBoxY + 11);
-      pdf.text('Issue No / Date', rightBoxX + 4, rightBoxY + 15);
-      // Use current date for issue date
-      const now = new Date();
-      const issueDate = now.toLocaleDateString('en-GB');
-      pdf.text(issueDate, rightBoxX + rightBoxW - 6, rightBoxY + 15, { align: 'right' });
-
-      // Title
-      pdf.setFontSize(14);
+      pdf.text('COIMBATORE -35, TN, INDIA', middleX + middleColWidth / 2, headerStartY + row1H + row2H / 2 + 1.5, { align: 'center' });
+      
+      // Row 3: Academic - Forms
+      pdf.rect(middleX, headerStartY + row1H + row2H, middleColWidth, row3H);
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('EVENT APPROVAL LETTER', pageWidth / 2, headerY + 28, { align: 'center' });
+      pdf.text('ACADEMIC - FORMS', middleX + middleColWidth / 2, headerStartY + row1H + row2H + row3H / 2 + 1.5, { align: 'center' });
+      
+      // Row 4: Event Approval Letter
+      pdf.rect(middleX, headerStartY + row1H + row2H + row3H, middleColWidth, row4H);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('EVENT APPROVAL LETTER', middleX + middleColWidth / 2, headerStartY + row1H + row2H + row3H + row4H / 2 + 1.5, { align: 'center' });
+      
+      // Row 5: Academic Year (below the middle column)
+      pdf.rect(middleX, headerStartY + headerHeight, middleColWidth, 8);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('ACADEMIC YEAR: 2024 - 2025', middleX + middleColWidth / 2, headerStartY + headerHeight + 5.5, { align: 'center' });
+      
+      // Right column - divided into 3 rows
+      const rightX = middleX + middleColWidth;
+      const rightRow1H = headerHeight / 3;
+      const rightRow2H = headerHeight / 3;
+      const rightRow3H = headerHeight / 3;
+      
+      // Row 1: Doc. Ref.
+      pdf.rect(rightX, headerStartY, rightColWidth, rightRow1H);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Doc. Ref.', rightX + rightColWidth / 2, headerStartY + rightRow1H / 3 + 1, { align: 'center' });
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KITE/AC/AL/ 75', rightX + rightColWidth / 2, headerStartY + rightRow1H / 3 + 7, { align: 'center' });
+      
+      // Row 2: Issue No / Date
+      pdf.rect(rightX, headerStartY + rightRow1H, rightColWidth, rightRow2H);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Issue No / Date', rightX + rightColWidth / 2, headerStartY + rightRow1H + rightRow2H / 3 + 1, { align: 'center' });
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(issueDate, rightX + rightColWidth / 2, headerStartY + rightRow1H + rightRow2H / 3 + 7, { align: 'center' });
+      
+      // Row 3: Department
+      pdf.rect(rightX, headerStartY + rightRow1H + rightRow2H, rightColWidth, rightRow3H);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Department', rightX + rightColWidth / 2, headerStartY + rightRow1H + rightRow2H + rightRow3H / 2 + 1.5, { align: 'center' });
+      
+      // Extend Department cell below
+      pdf.rect(rightX, headerStartY + headerHeight, rightColWidth, 8);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      const deptText = approvalData.department || '';
+      pdf.text(deptText, rightX + rightColWidth / 2, headerStartY + headerHeight + 5.5, { align: 'center' });
 
-      // Date on right (use current date)
+      // Title below header table
+      const titleY = headerStartY + headerHeight + 14;
+      pdf.setFontSize(13);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('EVENT APPROVAL LETTER', pageWidth / 2, titleY, { align: 'center' });
+
+      // Date on right
+      const dateY = titleY + 8;
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Date: ${issueDate}`, pageWidth - margin - 30, headerY + 36);
+      pdf.text(`Date: ${issueDate}`, pageWidth - margin - 10, dateY, { align: 'right' });
 
       // From / Through / To table
-      const tableY = headerY + 44;
+      const tableY = dateY + 8;
       const tableX = margin + 10;
       const tableW = pageWidth - margin * 2 - 20;
       const colW = tableW / 3;
