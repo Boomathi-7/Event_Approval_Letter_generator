@@ -702,13 +702,13 @@ const Template = () => {
                 {errors.particulars && <p className="text-red-600 text-sm mt-1 text-center">{errors.particulars}</p>}
                 <div className="space-y-3">
                   {approvalData.particulars.map((b, idx) => (
-                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_96px] gap-2 items-center">
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-2 items-center">
                       <div className="flex items-center space-x-3">
                         <span className="text-sm font-medium text-gray-600">{idx + 1}.</span>
                         <input value={b.particular} onChange={(e) => handleParticularChange(idx, 'particular', e.target.value)} placeholder={`Particular ${idx + 1}`} maxLength={50} className="flex-1 px-3 py-2 border rounded-lg bg-white" />
                       </div>
                       <div>
-                        <input type="number" min="0" step="0.01" value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                        <input type="text" inputMode="decimal" value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
                       </div>
                     </div>
                   ))}
