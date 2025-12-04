@@ -47,9 +47,29 @@ const Template = () => {
   };
 
   const handleParticularChange = (index, field, value) => {
+    // sanitize amount input to allow only positive numbers (no negatives, no letters)
+    const sanitizeAmount = (v) => {
+      if (v === '') return '';
+      // remove all characters except digits and dot
+      let s = String(v).replace(/[^0-9.]/g, '');
+      // keep only first dot
+      const parts = s.split('.');
+      if (parts.length > 1) {
+        s = parts[0] + '.' + parts.slice(1).join('');
+      }
+      // keep leading zeros (they may be valid like 0.50)
+      return s;
+    };
+
     setApprovalData(prev => {
       const newPart = [...prev.particulars];
-      newPart[index] = { ...newPart[index], [field]: value };
+      const updated = { ...newPart[index] };
+      if (field === 'amount') {
+        updated.amount = sanitizeAmount(value);
+      } else {
+        updated[field] = value;
+      }
+      newPart[index] = updated;
       return { ...prev, particulars: newPart };
     });
   };
@@ -114,9 +134,28 @@ const Template = () => {
 
   // Generate Event Approval Letter PDF
   const generateApprovalLetterPdf = async () => {
+    // Validate required fields before generating
+    const newErrors = {};
+    if (!approvalData.department || approvalData.department.trim() === '') newErrors.department = 'Department is required';
+    if (!approvalData.from || approvalData.from.trim() === '') newErrors.from = 'From is required';
+    if (!approvalData.through || approvalData.through.trim() === '') newErrors.through = 'Through is required';
+    if (!approvalData.to || approvalData.to.trim() === '') newErrors.to = 'To is required';
+    if (!approvalData.subject || approvalData.subject.trim() === '') newErrors.subject = 'Subject is required';
+    if (!approvalData.body || approvalData.body.trim() === '') newErrors.body = 'Body is required';
+    // particulars: at least one row should be filled (particular text)
+    const anyParticularFilled = approvalData.particulars && approvalData.particulars.some(p => p && p.particular && p.particular.trim() !== '');
+    if (!anyParticularFilled) newErrors.particulars = 'At least one particular must be filled';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      window.alert('Please fill required fields before generating the PDF');
+      return;
+    }
+    setErrors({});
     setIsGeneratingPdf(true);
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
+      // Use built-in Times font to avoid runtime font-registration issues
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 6; // mm
@@ -264,17 +303,41 @@ const Template = () => {
       pdf.text(approvalData.subject || '', tableX + 18, subjY + 4);
       try { pdf.setFont('times', 'normal'); } catch (e) {}
       const subjBoxY = subjY + 8;
-      const subjBoxH = 92; // provide slightly more room
+
+      // Compute budget area early so subject box can fill remaining space above it
+      const rowH_for_budget = 8;
+      const budgetRows_for_calc = 5; // header + 3 particulars + total
+      const budgetW_for_calc = 120;
+      const budgetH_for_calc = rowH_for_budget * budgetRows_for_calc;
+      const budgetY_for_calc = pageHeight - margin - budgetH_for_calc - 6;
+      // subject box height should end above budget table
+      // leave extra vertical gap between subject box and budget table to avoid overlap
+      const subjBoxH = Math.max(80, budgetY_for_calc - subjBoxY - 20);
       pdf.rect(tableX, subjBoxY, tableW, subjBoxH);
 
       // Render body text first and then table (if attached) below the body inside the subject box
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       pdf.setFontSize(10);
       const bodyLines = pdf.splitTextToSize(approvalData.body || '', tableW - 6);
       const lineH = 4.5; // approx mm per line for current font/size
       let cursorY = subjBoxY + 8;
       if (bodyLines && bodyLines.length > 0) {
-        pdf.text(bodyLines, tableX + 3, cursorY);
-        cursorY += bodyLines.length * lineH + 4;
+        // compute available height for body inside subject box
+        const availableBodyH = subjBoxH - 12; // padding
+        const maxLines = Math.max(0, Math.floor(availableBodyH / lineH));
+        let renderLines = bodyLines;
+        let truncated = false;
+        if (bodyLines.length > maxLines) {
+          renderLines = bodyLines.slice(0, maxLines);
+          truncated = true;
+        }
+        // if truncated, append ellipsis to last line
+        if (truncated && renderLines.length > 0) {
+          const lastIdx = renderLines.length - 1;
+          renderLines[lastIdx] = renderLines[lastIdx].replace(/\s+$/, '') + ' ...';
+        }
+        pdf.text(renderLines, tableX + 3, cursorY);
+        cursorY += renderLines.length * lineH + 4;
       }
 
       // If a table is attached, render it starting at cursorY (below body) inside subj box
@@ -285,77 +348,92 @@ const Template = () => {
         const availableW = tableW - 6;
         const cellW = availableW / cols;
         const remainingH = subjBoxY + subjBoxH - cursorY - 6;
-        let cellH = 7;
-        if (rows * cellH > remainingH) cellH = Math.max(4, Math.floor(remainingH / rows));
+        if (remainingH > 6) {
+          let cellH = 7;
+          if (rows * cellH > remainingH) cellH = Math.max(4, Math.floor(remainingH / rows));
 
-        pdf.setFontSize(9);
-        pdf.setLineWidth(0.2);
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const x = tableX + 3 + c * cellW;
-            const y = cursorY + r * cellH;
-            pdf.rect(x, y - 4, cellW, cellH);
-            const text = t[r][c] || '';
-            const lines = pdf.splitTextToSize(String(text), cellW - 4);
-            pdf.text(lines, x + 2, y - 1);
+          pdf.setFontSize(9);
+          pdf.setLineWidth(0.2);
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const x = tableX + 3 + c * cellW;
+              const y = cursorY + r * cellH;
+              // don't draw cells that would overflow subj box
+              if (y + cellH > subjBoxY + subjBoxH) continue;
+              pdf.rect(x, y - 4, cellW, cellH);
+              const text = t[r][c] || '';
+              const lines = pdf.splitTextToSize(String(text), cellW - 4);
+              pdf.text(lines, x + 2, y - 1);
+            }
           }
         }
       }
 
-      // Event Budget table near bottom
-      try { pdf.setFont('times', 'bold'); } catch (e) {}
-      pdf.text('Event Budget', pageWidth / 2, pageHeight - 82, { align: 'center' });
+      // Event Budget title will be drawn above the budget table (after budget position computed)
 
-      const budgetW = 120;
+      // Draw budget area computed earlier
+      const rowH = rowH_for_budget;
+      const budgetRows = budgetRows_for_calc;
+      const budgetW = budgetW_for_calc;
       const budgetX = (pageWidth - budgetW) / 2;
-      const budgetY = pageHeight - 76; // Increased from 64 to 76 for more space
-      const rowH = 8;
+      const budgetY = budgetY_for_calc;
+
+      // draw budget rows
+      pdf.setLineWidth(0.3);
+      for (let r = 0; r < budgetRows; r++) {
+        pdf.rect(budgetX, budgetY + r * rowH, budgetW, rowH);
+      }
+
+      // Draw Event Budget title above the budget table (centered over the budget box)
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
+      pdf.setFontSize(12);
+      const budgetTitleX = budgetX + budgetW / 2;
+      const budgetTitleY = budgetY - (rowH + 4); // place title with a clear gap above the table
+      pdf.text('Event Budget', budgetTitleX, budgetTitleY, { align: 'center' });
+
+      // column separators (S.No, Particulars, Amount)
       const col1 = 18; // S.No
       const col2 = 72; // Particulars
-      const col3 = budgetW - col1 - col2; // Amount
+      pdf.line(budgetX + col1, budgetY, budgetX + col1, budgetY + rowH * budgetRows);
+      pdf.line(budgetX + col1 + col2, budgetY, budgetX + col1 + col2, budgetY + rowH * budgetRows);
 
-      // header row + 3 particulars + total (5 rows total)
-      pdf.setLineWidth(0.3);
-      pdf.rect(budgetX, budgetY, budgetW, rowH); // Header
-      pdf.rect(budgetX, budgetY + rowH, budgetW, rowH); // Particular 1
-      pdf.rect(budgetX, budgetY + rowH * 2, budgetW, rowH); // Particular 2
-      pdf.rect(budgetX, budgetY + rowH * 3, budgetW, rowH); // Particular 3
-      pdf.rect(budgetX, budgetY + rowH * 4, budgetW, rowH); // Total row
-
-      // column separators
-      pdf.line(budgetX + col1, budgetY, budgetX + col1, budgetY + rowH * 4);
-      pdf.line(budgetX + col1 + col2, budgetY, budgetX + col1 + col2, budgetY + rowH * 4);
-
-      // header texts
+      // header texts (centered where requested)
       pdf.setFontSize(9);
       try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('S.No', budgetX + col1 / 2, budgetY + 6, { align: 'center' });
-      pdf.text('Particulars', budgetX + col1 + 6, budgetY + 6);
-      pdf.text('Amount', budgetX + col1 + col2 + 20, budgetY + 6);
+      // center Particulars header in its column
+      pdf.text('Particulars', budgetX + col1 + col2 / 2, budgetY + 6, { align: 'center' });
+      // center Amount header in its column area
+      pdf.text('Amount', budgetX + col1 + col2 + (budgetW - col1 - col2) / 2, budgetY + 6, { align: 'center' });
 
-      // fill rows from approvalData.particulars
+      // fill rows from approvalData.particulars and right-align amounts
       try { pdf.setFont('times', 'normal'); } catch (e) {}
       let total = 0;
       for (let i = 0; i < approvalData.particulars.length; i++) {
         const p = approvalData.particulars[i] ? approvalData.particulars[i].particular : '';
         const a = approvalData.particulars[i] ? approvalData.particulars[i].amount : '';
-        pdf.text(`${i + 1}.`, budgetX + 4, budgetY + rowH * (i + 1) + 6);
+        pdf.text(`${i + 1}.`, budgetX + col1 / 2, budgetY + rowH * (i + 1) + 6, { align: 'center' });
         pdf.text(p || 'nil', budgetX + col1 + 6, budgetY + rowH * (i + 1) + 6);
-        pdf.text(a ? a : '0', budgetX + col1 + col2 + 6, budgetY + rowH * (i + 1) + 6);
+        // right align amount within amount column
+        const amountX = budgetX + budgetW - 6;
+        pdf.text(a ? String(a) : '0', amountX, budgetY + rowH * (i + 1) + 6, { align: 'right' });
         const num = parseFloat(String(a).replace(/,/g, '')) || 0;
         total += num;
       }
 
-      // Total row
-      pdf.setFont('helvetica', 'bold');
+      // Total row - right align value
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * 4 + 6);
-      pdf.text(total.toFixed(2), budgetX + col1 + col2 + 6, budgetY + rowH * 4 + 6);
+      const totalX = budgetX + budgetW - 6;
+      pdf.text(total.toFixed(2), totalX, budgetY + rowH * 4 + 6, { align: 'right' });
 
       // Save
       pdf.save(`Event_Approval_Letter_${(approvalData.department || 'dept')}.pdf`);
     } catch (err) {
       console.error('Approval PDF error', err);
-      alert('Error generating approval letter PDF');
+      // show a more descriptive alert to help debugging
+      const msg = (err && err.message) ? err.message : String(err);
+      alert(`Error generating approval letter PDF: ${msg}`);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -448,7 +526,8 @@ const Template = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                  <input type="text" name="department" value={approvalData.department} onChange={handleApprovalChange} placeholder="Department" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <input type="text" name="department" value={approvalData.department} onChange={handleApprovalChange} placeholder="Department" required className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  {errors.department && <p className="text-red-600 text-sm mt-1">{errors.department}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
@@ -456,26 +535,31 @@ const Template = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Through</label>
-                  <input type="text" name="through" value={approvalData.through} onChange={handleApprovalChange} placeholder="Through" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <input type="text" name="through" value={approvalData.through} onChange={handleApprovalChange} placeholder="Through" required className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  {errors.through && <p className="text-red-600 text-sm mt-1">{errors.through}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
-                  <input type="text" name="to" value={approvalData.to} onChange={handleApprovalChange} placeholder="To" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  <input type="text" name="to" value={approvalData.to} onChange={handleApprovalChange} placeholder="To" required className="w-full px-3 py-2 border rounded-lg bg-white" />
+                  {errors.to && <p className="text-red-600 text-sm mt-1">{errors.to}</p>}
                 </div>
               </div>
 
               <div className="mb-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                <input name="subject" value={approvalData.subject} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Subject for the approval letter" />
+                <input name="subject" value={approvalData.subject} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Subject for the approval letter" required />
+                {errors.subject && <p className="text-red-600 text-sm mt-1">{errors.subject}</p>}
               </div>
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Body of the letter</label>
-                <textarea name="body" rows={6} value={approvalData.body} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Write the body of the approval letter here" />
+                <textarea name="body" rows={6} value={approvalData.body} onChange={handleApprovalChange} className="w-full px-3 py-2 border rounded-lg bg-white" placeholder="Write the body of the approval letter here" required />
+                {errors.body && <p className="text-red-600 text-sm mt-1">{errors.body}</p>}
               </div>
 
               <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Particulars</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-2 text-center">Particulars</h4>
+                {errors.particulars && <p className="text-red-600 text-sm mt-1 text-center">{errors.particulars}</p>}
                 <div className="space-y-3">
                   {approvalData.particulars.map((b, idx) => (
                     <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_96px] gap-2 items-center">
@@ -484,7 +568,7 @@ const Template = () => {
                         <input value={b.particular} onChange={(e) => handleParticularChange(idx, 'particular', e.target.value)} placeholder={`Particular ${idx + 1}`} className="flex-1 px-3 py-2 border rounded-lg bg-white" />
                       </div>
                       <div>
-                        <input value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
+                        <input type="number" min="0" step="0.01" value={b.amount} onChange={(e) => handleParticularChange(idx, 'amount', e.target.value)} placeholder="Amount" className="w-full px-3 py-2 border rounded-lg bg-white" />
                       </div>
                     </div>
                   ))}
