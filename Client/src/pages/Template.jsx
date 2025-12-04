@@ -282,17 +282,17 @@ const Template = () => {
 
       pdf.setFontSize(10);
       try { pdf.setFont('times', 'bold'); } catch (e) {}
-      pdf.text('From', tableX + colW / 2, tableY + 8, { align: 'center' });
-      pdf.text('Through', tableX + colW + colW / 2, tableY + 8, { align: 'center' });
-      pdf.text('To', tableX + colW * 2 + colW / 2, tableY + 8, { align: 'center' });
+      pdf.text('From', tableX + colW / 2, tableY + 5, { align: 'center' });
+      pdf.text('Through', tableX + colW + colW / 2, tableY + 5, { align: 'center' });
+      pdf.text('To', tableX + colW * 2 + colW / 2, tableY + 5, { align: 'center' });
 
       try { pdf.setFont('times', 'normal'); } catch (e) {}
       const fromText = pdf.splitTextToSize(approvalData.from || '', colW - 6);
       const throughText = pdf.splitTextToSize(approvalData.through || '', colW - 6);
       const toText = pdf.splitTextToSize(approvalData.to || '', colW - 6);
-      pdf.text(fromText, tableX + 3, tableY + 14);
-      pdf.text(throughText, tableX + colW + 3, tableY + 14);
-      pdf.text(toText, tableX + colW * 2 + 3, tableY + 14);
+      pdf.text(fromText, tableX + 3, tableY + 12);
+      pdf.text(throughText, tableX + colW + 3, tableY + 12);
+      pdf.text(toText, tableX + colW * 2 + 3, tableY + 12);
 
       // Subject area and body
       const subjY = tableY + 38;
@@ -426,6 +426,11 @@ const Template = () => {
       pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * 4 + 6);
       const totalX = budgetX + budgetW - 6;
       pdf.text(total.toFixed(2), totalX, budgetY + rowH * 4 + 6, { align: 'right' });
+
+      // Add "Powered by IPS Tech Community" at bottom right in italic
+      try { pdf.setFont('times', 'italic'); } catch (e) {}
+      pdf.setFontSize(9);
+      pdf.text('Powered by IPS Tech Community', pageWidth - margin - 10, pageHeight - margin - 2, { align: 'right' });
 
       // Save
       pdf.save(`Event_Approval_Letter_${(approvalData.department || 'dept')}.pdf`);
