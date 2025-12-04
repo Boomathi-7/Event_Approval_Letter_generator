@@ -23,7 +23,13 @@ const Template = () => {
     ],
     attachTable: false,
     tableFile: '',
-    tableContent: ''
+    tableContent: '',
+    // table represented as array of rows, each row is array of cells
+    table: [
+      ['', ''],
+      ['', ''],
+      ['', '']
+    ]
   });
   
   
@@ -47,6 +53,63 @@ const Template = () => {
       return { ...prev, particulars: newPart };
     });
   };
+
+  // Table editor helpers
+  const updateTableCell = (r, c, value) => {
+    setApprovalData(prev => {
+      const t = prev.table.map(row => row.slice());
+      if (!t[r]) return prev;
+      t[r][c] = value;
+      return { ...prev, table: t };
+    });
+  };
+
+  const addTableRow = () => {
+    setApprovalData(prev => {
+      const cols = prev.table && prev.table[0] ? prev.table[0].length : 2;
+      const t = prev.table ? prev.table.map(r => r.slice()) : [];
+      t.push(new Array(cols).fill(''));
+      return { ...prev, table: t };
+    });
+  };
+
+  const addTableCol = () => {
+    setApprovalData(prev => {
+      const t = prev.table ? prev.table.map(r => r.slice()) : [];
+      return { ...prev, table: t.map(r => { r.push(''); return r; }) };
+    });
+  };
+
+  const removeTableRow = (idx) => {
+    setApprovalData(prev => {
+      const t = prev.table ? prev.table.map(r => r.slice()) : [];
+      if (t.length <= 1) return prev;
+      t.splice(idx, 1);
+      return { ...prev, table: t };
+    });
+  };
+
+  const removeTableCol = (idx) => {
+    setApprovalData(prev => {
+      const t = prev.table ? prev.table.map(r => r.slice()) : [];
+      if (!t[0] || t[0].length <= 1) return prev;
+      t.forEach(r => r.splice(idx, 1));
+      return { ...prev, table: t };
+    });
+  };
+
+  const parseTableContent = () => {
+    const raw = approvalData.tableContent || '';
+    const lines = raw.trim().split(/\r?\n/).filter(l => l.trim() !== '');
+    if (lines.length === 0) return;
+    const parsed = lines.map(line => {
+      // try tab first, then comma, then multiple spaces
+      if (line.indexOf('\t') >= 0) return line.split('\t').map(c => c.trim());
+      if (line.indexOf(',') >= 0) return line.split(',').map(c => c.trim());
+      return line.split(/\s{2,}/).map(c => c.trim());
+    });
+    setApprovalData(prev => ({ ...prev, table: parsed }));
+  };
   
 
   // Generate Event Approval Letter PDF
@@ -62,6 +125,13 @@ const Template = () => {
       pdf.setLineWidth(0.6);
       pdf.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
 
+      // Prefer Times New Roman (Times) for the PDF output
+      try {
+        pdf.setFont('times', 'normal');
+      } catch (e) {
+        // ignore if not available
+      }
+
       // Header area (logo left + institute text centered + doc ref box right)
       const headerY = margin + 6;
       try {
@@ -75,10 +145,10 @@ const Template = () => {
 
       // Institute name block centered
       pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'bold');
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('KGISL INSTITUTE OF TECHNOLOGY,', pageWidth / 2, headerY + 2, { align: 'center' });
       pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'normal');
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       pdf.text('COIMBATORE -35, TN, INDIA', pageWidth / 2, headerY + 8, { align: 'center' });
 
       // Small table at top-right for Doc.Ref and Issue No/Date
@@ -97,12 +167,12 @@ const Template = () => {
 
       // Title
       pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('EVENT APPROVAL LETTER', pageWidth / 2, headerY + 28, { align: 'center' });
 
       // Date on right (use current date)
       pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       pdf.text(`Date: ${issueDate}`, pageWidth - margin - 30, headerY + 36);
 
       // From / Through / To table
@@ -118,12 +188,12 @@ const Template = () => {
       pdf.line(tableX + colW * 2, tableY, tableX + colW * 2, tableY + 28);
 
       pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'bold');
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('From', tableX + colW / 2, tableY + 8, { align: 'center' });
       pdf.text('Through', tableX + colW + colW / 2, tableY + 8, { align: 'center' });
       pdf.text('To', tableX + colW * 2 + colW / 2, tableY + 8, { align: 'center' });
 
-      pdf.setFont('helvetica', 'normal');
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       const fromText = pdf.splitTextToSize(approvalData.from || '', colW - 6);
       const throughText = pdf.splitTextToSize(approvalData.through || '', colW - 6);
       const toText = pdf.splitTextToSize(approvalData.to || '', colW - 6);
@@ -133,20 +203,53 @@ const Template = () => {
 
       // Subject area and body
       const subjY = tableY + 38;
-      pdf.setFont('helvetica', 'normal');
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       pdf.text('Sub :', tableX, subjY + 4);
       // small subject line above the box
-      pdf.setFont('helvetica', 'bold');
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text(approvalData.subject || '', tableX + 18, subjY + 4);
-      pdf.setFont('helvetica', 'normal');
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       const subjBoxY = subjY + 8;
-      const subjBoxH = 80;
+      const subjBoxH = 92; // provide slightly more room
       pdf.rect(tableX, subjBoxY, tableW, subjBoxH);
-      const bodyText = pdf.splitTextToSize(approvalData.body || '', tableW - 6);
-      pdf.text(bodyText, tableX + 3, subjBoxY + 8);
+
+      // Render body text first and then table (if attached) below the body inside the subject box
+      pdf.setFontSize(10);
+      const bodyLines = pdf.splitTextToSize(approvalData.body || '', tableW - 6);
+      const lineH = 4.5; // approx mm per line for current font/size
+      let cursorY = subjBoxY + 8;
+      if (bodyLines && bodyLines.length > 0) {
+        pdf.text(bodyLines, tableX + 3, cursorY);
+        cursorY += bodyLines.length * lineH + 4;
+      }
+
+      // If a table is attached, render it starting at cursorY (below body) inside subj box
+      if (approvalData.attachTable && approvalData.table && approvalData.table.length > 0) {
+        const t = approvalData.table;
+        const rows = t.length;
+        const cols = t[0].length || 1;
+        const availableW = tableW - 6;
+        const cellW = availableW / cols;
+        const remainingH = subjBoxY + subjBoxH - cursorY - 6;
+        let cellH = 7;
+        if (rows * cellH > remainingH) cellH = Math.max(4, Math.floor(remainingH / rows));
+
+        pdf.setFontSize(9);
+        pdf.setLineWidth(0.2);
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const x = tableX + 3 + c * cellW;
+            const y = cursorY + r * cellH;
+            pdf.rect(x, y - 4, cellW, cellH);
+            const text = t[r][c] || '';
+            const lines = pdf.splitTextToSize(String(text), cellW - 4);
+            pdf.text(lines, x + 2, y - 1);
+          }
+        }
+      }
 
       // Event Budget table near bottom
-      pdf.setFont('helvetica', 'bold');
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('Event Budget', pageWidth / 2, pageHeight - 82, { align: 'center' });
 
       const budgetW = 120;
@@ -171,12 +274,13 @@ const Template = () => {
 
       // header texts
       pdf.setFontSize(9);
+      try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.text('S.No', budgetX + col1 / 2, budgetY + 6, { align: 'center' });
       pdf.text('Particulars', budgetX + col1 + 6, budgetY + 6);
       pdf.text('Amount', budgetX + col1 + col2 + 20, budgetY + 6);
 
       // fill rows from approvalData.particulars
-      pdf.setFont('helvetica', 'normal');
+      try { pdf.setFont('times', 'normal'); } catch (e) {}
       let total = 0;
       for (let i = 0; i < approvalData.particulars.length; i++) {
         const p = approvalData.particulars[i] ? approvalData.particulars[i].particular : '';
@@ -219,7 +323,12 @@ const Template = () => {
       ],
       attachTable: false,
       tableFile: '',
-      tableContent: ''
+      tableContent: '',
+      table: [
+        ['', ''],
+        ['', ''],
+        ['', '']
+      ]
     });
     setErrors({});
   };
@@ -364,17 +473,51 @@ const Template = () => {
                       )}
                     </div>
 
-                    {/* Option 2: Paste Table Content */}
+                    {/* Option 2: Paste Table Content + Table Editor */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Option 2: Paste Table Content</label>
                       <textarea 
                         value={approvalData.tableContent || ''}
                         onChange={(e) => setApprovalData(prev => ({ ...prev, tableContent: e.target.value }))}
                         placeholder="Paste your table content here (copy from Word document, Excel, etc.)"
-                        rows={6}
+                        rows={4}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Tip: Copy a table from Word/Excel and paste it here</p>
+                      <div className="mt-2 flex items-center space-x-2">
+                        <button type="button" onClick={parseTableContent} className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm">Parse into table</button>
+                        <button type="button" onClick={addTableRow} className="px-3 py-1 bg-white border rounded-md text-sm">Add row</button>
+                        <button type="button" onClick={addTableCol} className="px-3 py-1 bg-white border rounded-md text-sm">Add column</button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Tip: Copy a table from Word/Excel and paste it above, then click "Parse into table". You can also edit cells below.</p>
+
+                      {/* Editable table grid */}
+                      <div className="mt-3 overflow-auto border rounded-md bg-white">
+                        <table className="min-w-full text-sm">
+                          <tbody>
+                            {approvalData.table && approvalData.table.map((row, rIdx) => (
+                              <tr key={rIdx} className="border-t">
+                                {row.map((cell, cIdx) => (
+                                  <td key={cIdx} className="p-1 align-top border-r">
+                                    <input value={cell} onChange={(e) => updateTableCell(rIdx, cIdx, e.target.value)} className="w-40 px-2 py-1 text-sm" />
+                                  </td>
+                                ))}
+                                <td className="p-1 align-top">
+                                  <div className="flex flex-col space-y-1">
+                                    <button type="button" onClick={() => removeTableRow(rIdx)} className="px-2 py-1 text-xs bg-red-50 border rounded">Remove row</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {/* Column controls */}
+                        <div className="p-2 border-t bg-gray-50 flex items-center space-x-2">
+                          <span className="text-xs text-gray-600">Columns:</span>
+                          {approvalData.table && approvalData.table[0] && approvalData.table[0].map((_, cIdx) => (
+                            <button key={cIdx} type="button" onClick={() => removeTableCol(cIdx)} className="px-2 py-1 text-xs bg-red-50 border rounded">Remove col {cIdx + 1}</button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
