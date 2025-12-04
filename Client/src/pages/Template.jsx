@@ -508,28 +508,9 @@ const Template = () => {
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">Add Table Content</h4>
                   
                   <div className="space-y-4">
-                    {/* Option 1: Upload File */}
+                    {/* Paste Table Content + Table Editor */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Option 1: Upload File</label>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            const fileName = e.target.files[0].name;
-                            setApprovalData(prev => ({ ...prev, tableFile: fileName }));
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {approvalData.tableFile && (
-                        <p className="text-sm text-green-600 mt-2">✓ Selected: {approvalData.tableFile}</p>
-                      )}
-                    </div>
-
-                    {/* Option 2: Paste Table Content + Table Editor */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Option 2: Paste Table Content</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Paste Table Content</label>
                       <textarea 
                         value={approvalData.tableContent || ''}
                         onChange={(e) => setApprovalData(prev => ({ ...prev, tableContent: e.target.value }))}
