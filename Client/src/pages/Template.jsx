@@ -8,6 +8,9 @@ import ipsLogo from '../assets/ips.webp';
 const Template = () => {
   // State for form fields
 
+  // State for number of particulars (max 7)
+  const [numberOfParticulars, setNumberOfParticulars] = useState(3);
+
   // State for approval-letter specific fields
   const [approvalData, setApprovalData] = useState({
     from: '',
@@ -44,6 +47,17 @@ const Template = () => {
   const handleApprovalChange = (e) => {
     const { name, value } = e.target;
     setApprovalData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle change in number of particulars
+  const handleNumberOfParticularsChange = (e) => {
+    const count = parseInt(e.target.value);
+    setNumberOfParticulars(count);
+    // Adjust particulars array
+    const newParticulars = Array(count).fill(null).map((_, idx) => 
+      approvalData.particulars[idx] || { particular: '', amount: '' }
+    );
+    setApprovalData(prev => ({ ...prev, particulars: newParticulars }));
   };
 
   const handleParticularChange = (index, field, value) => {
@@ -295,7 +309,7 @@ const Template = () => {
       pdf.text(toText, tableX + colW * 2 + 3, tableY + 12);
 
       // Subject area and body
-      const subjY = tableY + 38;
+      const subjY = tableY + 33;
       try { pdf.setFont('times', 'normal'); } catch (e) {}
       pdf.text('Sub :', tableX, subjY + 4);
       // small subject line above the box
@@ -305,11 +319,12 @@ const Template = () => {
       const subjBoxY = subjY + 8;
 
       // Compute budget area early so subject box can fill remaining space above it
-      const rowH_for_budget = 8;
-      const budgetRows_for_calc = 5; // header + 3 particulars + total
+      const particularCount = approvalData.particulars.length;
+      const rowH_for_budget = particularCount <= 5 ? 8 : 6.5; // Smaller rows if more than 5 particulars
+      const budgetRows_for_calc = particularCount + 2; // header + particulars + total
       const budgetW_for_calc = 120;
       const budgetH_for_calc = rowH_for_budget * budgetRows_for_calc;
-      const budgetY_for_calc = pageHeight - margin - budgetH_for_calc - 6;
+      const budgetY_for_calc = pageHeight - margin - budgetH_for_calc - 12;
       // subject box height should end above budget table
       // leave extra vertical gap between subject box and budget table to avoid overlap
       const subjBoxH = Math.max(80, budgetY_for_calc - subjBoxY - 20);
@@ -388,7 +403,7 @@ const Template = () => {
       try { pdf.setFont('times', 'bold'); } catch (e) {}
       pdf.setFontSize(12);
       const budgetTitleX = budgetX + budgetW / 2;
-      const budgetTitleY = budgetY - (rowH + 4); // place title with a clear gap above the table
+      const budgetTitleY = budgetY - 6; // place title closer to the table
       pdf.text('Event Budget', budgetTitleX, budgetTitleY, { align: 'center' });
 
       // column separators (S.No, Particulars, Amount)
@@ -406,26 +421,28 @@ const Template = () => {
       // center Amount header in its column area
       pdf.text('Amount', budgetX + col1 + col2 + (budgetW - col1 - col2) / 2, budgetY + 6, { align: 'center' });
 
-      // fill rows from approvalData.particulars and right-align amounts
+      // fill rows from approvalData.particulars and center-align amounts
       try { pdf.setFont('times', 'normal'); } catch (e) {}
       let total = 0;
+      const col3 = budgetW - col1 - col2; // Amount column width
       for (let i = 0; i < approvalData.particulars.length; i++) {
         const p = approvalData.particulars[i] ? approvalData.particulars[i].particular : '';
         const a = approvalData.particulars[i] ? approvalData.particulars[i].amount : '';
         pdf.text(`${i + 1}.`, budgetX + col1 / 2, budgetY + rowH * (i + 1) + 6, { align: 'center' });
         pdf.text(p || 'nil', budgetX + col1 + 6, budgetY + rowH * (i + 1) + 6);
-        // right align amount within amount column
-        const amountX = budgetX + budgetW - 6;
-        pdf.text(a ? String(a) : '0', amountX, budgetY + rowH * (i + 1) + 6, { align: 'right' });
+        // center align amount within amount column
+        const amountCenterX = budgetX + col1 + col2 + col3 / 2;
+        pdf.text(a ? String(a) : '0', amountCenterX, budgetY + rowH * (i + 1) + 6, { align: 'center' });
         const num = parseFloat(String(a).replace(/,/g, '')) || 0;
         total += num;
       }
 
-      // Total row - right align value
+      // Total row - center align value (after all particulars)
+      const totalRowIndex = approvalData.particulars.length + 1;
       try { pdf.setFont('times', 'bold'); } catch (e) {}
-      pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * 4 + 6);
-      const totalX = budgetX + budgetW - 6;
-      pdf.text(total.toFixed(2), totalX, budgetY + rowH * 4 + 6, { align: 'right' });
+      pdf.text('Total', budgetX + col1 + 6, budgetY + rowH * totalRowIndex + 6);
+      const amountCenterX = budgetX + col1 + col2 + col3 / 2;
+      pdf.text(total.toFixed(2), amountCenterX, budgetY + rowH * totalRowIndex + 6, { align: 'center' });
 
       // Add "Powered by IPS Tech Community" at bottom right in italic
       try { pdf.setFont('times', 'italic'); } catch (e) {}
@@ -446,6 +463,7 @@ const Template = () => {
 
   // Reset form (approval fields)
   const resetForm = () => {
+    setNumberOfParticulars(3);
     setApprovalData({
       from: '',
       through: '',
@@ -640,7 +658,21 @@ const Template = () => {
               )}
 
               <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2 text-center">Particulars</h4>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">Particulars</h4>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Number of particulars:</label>
+                    <select 
+                      value={numberOfParticulars} 
+                      onChange={handleNumberOfParticularsChange}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7].map(num => (
+                        <option key={num} value={num}>{num}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 {errors.particulars && <p className="text-red-600 text-sm mt-1 text-center">{errors.particulars}</p>}
                 <div className="space-y-3">
                   {approvalData.particulars.map((b, idx) => (
