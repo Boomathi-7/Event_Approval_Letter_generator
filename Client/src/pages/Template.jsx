@@ -600,6 +600,18 @@ const Template = () => {
                 </div>
               </div>
 
+              {/* Note for From, Through, To fields */}
+              <div className="my-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="h-5 w-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-blue-800">
+                    <span className="font-semibold">Note:</span> Enter fields of From, Through & To as comma or semicolon separated ones for multiple entries.
+                  </p>
+                </div>
+              </div>
+
               <div className="mb-3">
                 <label className="block text-sm font-medium text-blue-700 mb-2">
                   Subject <span className="text-red-500">*</span> <span className="text-gray-500 text-xs ml-2">({approvalData.subject.length}/150)</span>
